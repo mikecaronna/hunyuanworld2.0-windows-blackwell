@@ -1,0 +1,22 @@
+﻿diff --git a/hyworld2/worldgen/traj_render.py b/hyworld2/worldgen/traj_render.py
+index d3ad35e..4b64caa 100755
+--- a/hyworld2/worldgen/traj_render.py
++++ b/hyworld2/worldgen/traj_render.py
+@@ -68,7 +68,7 @@ if __name__ == '__main__':
+     device_num = torch.cuda.device_count()
+     torch.cuda.set_device(local_rank)
+     dist.init_process_group(
+-        backend="cpu:gloo,cuda:nccl",
++        backend="gloo",
+         rank=rank,
+         world_size=world_size,
+     )
+@@ -98,7 +98,7 @@ if __name__ == '__main__':
+ 
+             with open(f"{traj_path}/camera.json", "r") as f:
+                 camera_info = json.load(f)
+-            view_id, traj_id = traj_path.split('/')[-2], traj_path.split('/')[-1]
++            view_id, traj_id = os.path.basename(os.path.dirname(traj_path)), os.path.basename(traj_path)
+             image_path = f"{scene_path}/render_results/{view_id}/start_frame.png"
+             splitted_image = Image.open(image_path)
+             image_w, image_h = splitted_image.size

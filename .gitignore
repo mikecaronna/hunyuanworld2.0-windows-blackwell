@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+*.ply
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.whl
+*.log
+ckpts/
+outputs/
+test_inputs/
+wheels/

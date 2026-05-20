@@ -1,0 +1,15 @@
+﻿diff --git a/hyworld2/worldgen/src/data_utils.py b/hyworld2/worldgen/src/data_utils.py
+index f66ff2f..64ffff2 100644
+--- a/hyworld2/worldgen/src/data_utils.py
++++ b/hyworld2/worldgen/src/data_utils.py
+@@ -14,7 +14,9 @@ try:
+     from ..models.camera import get_camera_embedding, matrix_to_quaternion, unified_camera_normalization
+ except ImportError:
+     from models.camera import get_camera_embedding, matrix_to_quaternion, unified_camera_normalization
+-from glob import glob
++from glob import glob as _orig_glob
++def glob(*args, **kwargs):
++    return [p.replace('\\', '/') for p in _orig_glob(*args, **kwargs)]
+ 
+ def assign_scale(h, w, scale_map=None):
+     if scale_map is None:
