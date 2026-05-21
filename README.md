@@ -333,6 +333,18 @@ powershell -ExecutionPolicy Bypass -File .\run_full_pipeline.ps1 `
     -RepoRoot "D:\path\to\HY-World-2.0"
 ```
 
+**If your input is a regular flat photo** (not an equirectangular 2:1 panorama), add `-AutoPanorama` to insert HY-Pano 2.0 (Qwen-Image-Edit + LoRA backend) as Stage 0:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_full_pipeline.ps1 `
+    -PanoramaPath "D:\path\to\photo.jpg" `
+    -OutputName "scene_name" `
+    -RepoRoot "D:\path\to\HY-World-2.0" `
+    -AutoPanorama
+```
+
+Empirically `-AutoPanorama` produces substantially better 3DGS quality than feeding a flat photo directly to worldgen (which silently treats it as if it were equirectangular and ends up modelling phantom Gaussians around the distortion). Adds ~5 min to total pipeline. Requires `ckpts/Qwen-Image-Edit-2509/` and `ckpts/HY-Pano-2.0/` to be downloaded.
+
 Optional flags: `-HyworldEnv`, `-CudaPath`, `-VllmHost`, `-VllmPort` (defaults to `127.0.0.1:18000`).
 
 Required env vars (the script sets these automatically):
@@ -348,6 +360,7 @@ Required env vars (the script sets these automatically):
 
 | Stage | Script | Duration | What |
 |---|---|---|---|
+| 0 (opt-in) | `pipeline_with_qwen_image.py` | ~5 min | HY-Pano 2.0 (Qwen-Image-Edit + LoRA): flat photo → 1920×960 equirectangular panorama. Skip if your input is already a 2:1 pano. |
 | 1 | `traj_generate.py` | ~80s | SAM3 segmentation + Qwen3-VL labeling + trajectory planning |
 | 2 | `traj_render.py` | ~40s | Point-cloud preview rendering for 9 trajectories |
 | 3 | `video_gen.py` | ~35 min | WorldStereo diffusion + WorldMirror reconstruction |
@@ -355,7 +368,7 @@ Required env vars (the script sets these automatically):
 | 5 | `world_gs_trainer.py` | ~22 min | 3DGS training (8000 steps single-GPU) + mesh extraction |
 | 6 | `Tools/rotate_3dgs.py` | ~30s | Reorient PLY to SuperSplat convention |
 
-Total: ~60 minutes per scene.
+Total: ~60 minutes per scene (~65 with `-AutoPanorama`).
 
 ---
 

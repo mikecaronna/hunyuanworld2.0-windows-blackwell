@@ -2,9 +2,10 @@
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File run_full_pipeline.ps1 `
-#       -PanoramaPath <path-to-input-panorama.png> `
+#       -PanoramaPath <path-to-input-image-or-panorama.png> `
 #       -OutputName <scene_name> `
 #       -RepoRoot <path-to-HY-World-2.0-clone> `
+#       [-AutoPanorama] `
 #       [-HyworldEnv <path-to-hyworld2-conda-env>] `
 #       [-CudaPath <path-to-system-CUDA-toolkit>] `
 #       [-VllmHost 127.0.0.1] [-VllmPort 18000]
@@ -12,11 +13,18 @@
 # Requires:
 #   - vLLM server already running with Qwen3-VL-8B-Instruct at -VllmHost:-VllmPort
 #   - HF_TOKEN env var set in your shell (or `hf auth login` already done in the hyworld2 env)
+#
+# -AutoPanorama:
+#   When set, runs HY-Pano 2.0 (Qwen-Image-Edit + LoRA) as Stage 0 to expand
+#   the input image into a 2:1 equirectangular panorama before worldgen.
+#   Use this when the input is a regular photo (not already an equirectangular pano).
+#   Requires Qwen-Image-Edit-2509 + HY-Pano-2.0 weights under <RepoRoot>\ckpts\.
 
 param(
     [Parameter(Mandatory=$true)][string]$PanoramaPath,
     [Parameter(Mandatory=$true)][string]$OutputName,
     [Parameter(Mandatory=$true)][string]$RepoRoot,
+    [switch]$AutoPanorama,
     [string]$HyworldEnv = "$env:USERPROFILE\miniforge3\envs\hyworld2",
     [string]$CudaPath = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9",
     [string]$VllmHost = "127.0.0.1",
@@ -63,8 +71,30 @@ Write-Output "vLLM:        $VllmHost`:$VllmPort"
 Write-Output ""
 
 if (-not (Test-Path $TARGET_WIN)) { New-Item -ItemType Directory -Path $TARGET_WIN -Force | Out-Null }
-Copy-Item $PanoramaPath "$TARGET_WIN\panorama.png" -Force
-Write-Output "Staged panorama: $TARGET_WIN\panorama.png"
+
+if ($AutoPanorama) {
+    # Sanity check weights
+    $qwenBase = "$RepoRoot\ckpts\Qwen-Image-Edit-2509"
+    $panoLora = "$RepoRoot\ckpts\HY-Pano-2.0"
+    if (-not (Test-Path "$qwenBase\model_index.json")) { Write-Error "Qwen-Image-Edit not found at $qwenBase"; exit 1 }
+    if (-not (Test-Path "$panoLora\pytorch_lora_weights.safetensors")) { Write-Error "HY-Pano LoRA weights not found at $panoLora"; exit 1 }
+
+    Write-Output "=== Stage 0: HY-Pano 2.0 (flat photo -> equirectangular panorama) ~5 min ==="
+    Copy-Item $PanoramaPath "$TARGET_WIN\input_image.png" -Force
+    cd "$RepoRoot\hyworld2\panogen"
+    & $py pipeline_with_qwen_image.py `
+        --image "$TARGET_WIN\input_image.png" `
+        --pretrained-model-name-or-path $qwenBase `
+        --lora-path "$RepoRoot\ckpts" `
+        --lora-subfolder "HY-Pano-2.0" `
+        --save "$TARGET_WIN\panorama.png" `
+        --height 960 --width 1920 --seed 42 --reproduce
+    if ($LASTEXITCODE -ne 0) { Write-Output "STAGE 0 FAILED ($LASTEXITCODE)"; exit 1 }
+    Write-Output "Generated panorama: $TARGET_WIN\panorama.png"
+} else {
+    Copy-Item $PanoramaPath "$TARGET_WIN\panorama.png" -Force
+    Write-Output "Staged panorama: $TARGET_WIN\panorama.png"
+}
 
 cd "$RepoRoot\hyworld2\worldgen"
 
