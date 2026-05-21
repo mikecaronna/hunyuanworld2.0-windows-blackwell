@@ -44,6 +44,7 @@ $env:MASTER_ADDR = "127.0.0.1"
 $env:MASTER_PORT = "29520"
 $env:TORCHDYNAMO_DISABLE = "1"
 $env:TORCH_COMPILE_DISABLE = "1"
+$env:HYWORLD_CKPTS_DIR = "$RepoRoot\ckpts"
 
 if (-not $env:HF_TOKEN) {
     Write-Output "Note: HF_TOKEN not set. Pipeline will rely on `hf auth login` cached credentials."

@@ -285,6 +285,19 @@ result = subprocess.run(wm_cmd, cwd="..", env=wm_env)
 ```
 **Why:** `transformers==5.x` changed `StaticLayer.lazy_initialization` signature. Hunyuan code was written for 4.57.x.
 
+### P9: `hyworld2/worldgen/models/worldstereo_wrapper.py` — env-var override to bypass HF cache
+```diff
++        _local_root = os.environ.get("HYWORLD_CKPTS_DIR")
++        if _local_root and not os.path.isdir(repo_id):
++            _candidate = os.path.join(_local_root, os.path.basename(repo_id))
++            if os.path.isdir(_candidate):
++                rank0_log(f"HYWORLD_CKPTS_DIR override: {repo_id!r} -> {_candidate!r}")
++                repo_id = _candidate
++
+         if os.path.isdir(repo_id):
+```
+**Why:** On Windows the HuggingFace cache symlinks can resolve to 0-byte files after a `--model_type` switch, triggering a ~22 GB redownload. With `HYWORLD_CKPTS_DIR` set (the pipeline script does this automatically), the loader resolves `hanshanxue/WorldStereo` → `<ckpts>/WorldStereo/` directly and reads the local `model.safetensors`. No behavior change when the env var is unset.
+
 ---
 
 ## Running the pipeline

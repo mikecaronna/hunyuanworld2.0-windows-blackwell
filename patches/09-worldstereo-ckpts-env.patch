@@ -1,0 +1,23 @@
+diff --git a/hyworld2/worldgen/models/worldstereo_wrapper.py b/hyworld2/worldgen/models/worldstereo_wrapper.py
+index 4789e88..e5c5379 100644
+--- a/hyworld2/worldgen/models/worldstereo_wrapper.py
++++ b/hyworld2/worldgen/models/worldstereo_wrapper.py
+@@ -141,6 +141,18 @@ class WorldStereo:
+             device_mesh: ``DeviceMesh`` with dims ``("rep", "shard")``.
+             device: Target CUDA device.
+         """
++        # Windows-Blackwell port: HF cache symlinks are unreliable on Windows
++        # (snapshot files can resolve to 0 bytes after a model_type switch,
++        # triggering a full ~22 GB redownload). Allow an env-var override
++        # that points to a directory holding {subfolder}/config.json +
++        # {subfolder}/model.safetensors locally.
++        _local_root = os.environ.get("HYWORLD_CKPTS_DIR")
++        if _local_root and not os.path.isdir(repo_id):
++            _candidate = os.path.join(_local_root, os.path.basename(repo_id))
++            if os.path.isdir(_candidate):
++                rank0_log(f"HYWORLD_CKPTS_DIR override: {repo_id!r} -> {_candidate!r}")
++                repo_id = _candidate
++
+         if os.path.isdir(repo_id):
+             json_cfg_path = os.path.join(repo_id, subfolder, "config.json")
+             safetensors_path = os.path.join(repo_id, subfolder, "model.safetensors")
